@@ -8,11 +8,8 @@
 
 # 🎬 프로젝트 시연 영상
 
-## 📌 리모컨 송신부 동작 영상
+## 📌 동작 영상
 [![송신부 영상](https://img.youtube.com/vi/Z4GHtm7OMN8/0.jpg)](https://www.youtube.com/watch?v=Z4GHtm7OMN8)
-
-## 📌 자동차 수신부 동작 영상
-[![수신부 영상](https://img.youtube.com/vi/OMSTihPh2Og/0.jpg)](https://www.youtube.com/watch?v=OMSTihPh2Og)
 
 ---
 
