@@ -6,25 +6,67 @@
 #define fnd2 PORTC.7
 #define fire PORTB.4
 #define headlight PORTD.6
+#define servo_sen_M PORTD.1
+#define servo_gripper_M PORTD.2
+#define servo_wrist_M PORTD.3
+
 
 bit sig_start, sig_flag1, sig_flag2;
 char sig_1, sig_2, sig_3, sig_4, sig_5, sig_6, gun_mode, gun_mode1, fndc;
 int sig_point, mode, mode1, mode2, tick, num1, num10, num100, num1000, buf, number, fire_cnt, 
     mode1_cnt, mode2_cnt, mode3_cnt, mode4_cnt, mode5_cnt, mode6_cnt, mode7_cnt,
-    mode8_cnt, mode9_cnt, mode10_cnt, mode11_cnt, mo_cnt, stepmode; 
-/****fnd_πËø≠****/
+    mode8_cnt, mode9_cnt, mode10_cnt, mode11_cnt, mo_cnt, stepmode, servo_cnt, mode0_cnt, 
+    servo_cnt1, servo_cnt2, servo_cnt3, servo_cnt4, servo_cnt5, servo_cnt6;
 int F[10] = {0x7e, 0x0c, 0xb6, 0x9e, 0xcc, 0xda, 0xf8, 0x0e, 0xfe, 0xce};
 
-/********_fnd¥¬_ƒ≥º“µÂ_¡¶«∞*******/
+
+void fnd();
+/*****ÎèôÏûë_*****/
+void motor();
+void arm();
+void step();
+/*****Ï¥ùÍ∏∞_ÎèôÏûë_*****/
+void gun();
+void sig_mode();
+
+interrupt [TIM2_OVF] void timer2_ovf_isr(void){
+    TCNT2=0x06;  
+    step(); 
+    fnd();
+    motor();    
+    gun();
+    sig_mode();       
+    arm();   
+    if(signal == 1){
+        sig_flag1 = 0;
+    }     
+    
+}
+
+void main(void){
+DDRA = 0xfe; DDRB = 0xff; DDRC = 0xff; DDRD = 0xff;
+// Timer Period: 1 ms
+ASSR=0<<AS2;
+TCCR2=(0<<PWM2) | (0<<COM21) | (0<<COM20) | (0<<CTC2) | (0<<CS22) | (1<<CS21) | (1<<CS20);
+TCNT2=0x06;
+OCR2=0x00;
+TIMSK=0x41;
+#asm("sei")
+
+while (1){ 
+        if(signal == 0 && sig_flag1 == 0){
+            sig_flag1 = 1;
+            number++;
+        }          
+    }
+}
 void fnd(){
-    /********signal_ƒ´øÓ≈Õ«•Ω√_»Æ¿Œ*******/
-    fndc++;  
+    fndc++;
     switch(fndc){
         case 1: PORTA = F[num10]; fnd1 = 0; fnd2 = 1; break;
         case 2: fnd1 = 1; fnd2 = 1; break;
         case 3: PORTA = F[num1]; fnd1 = 1; fnd2 = 0; fndc = 0; break;
-    }               
-    /**********9999¡¯_**********/
+    }    
     num1000 = number / 1000;
     buf = number % 1000;
     
@@ -35,44 +77,96 @@ void fnd(){
     num1 = buf % 10;       
  
 }
-/*****µø¿€_*****/
-
+/*****Î°úÎ¥áÌåî_ÎèôÏûë_*****/
+void arm(){
+    if(mode == 0 && gun_mode <= 1){  
+        servo_cnt6 = 0;
+        servo_cnt5++;  
+        switch(servo_cnt5){
+            case 1: servo_wrist_M = 1; break;
+            case 3: servo_wrist_M = 0; break;
+        }     
+    }
+    if(mode == 2 && gun_mode <= 1){
+        servo_cnt5 = 0;
+        servo_cnt6++;  
+        switch(servo_cnt6){
+            case 1: servo_wrist_M = 1; break;
+            case 2: servo_wrist_M = 0; break;
+        }  
+    }    
+    if(mode1 == 1 && gun_mode <= 1){  
+        servo_cnt1 = 0;
+        servo_cnt++;  
+        switch(servo_cnt){
+            case 1: servo_sen_M = 1; break;
+            case 3: servo_sen_M = 0; break;
+        }     
+    }
+    if(mode1 == 2 && gun_mode <= 1){
+        servo_cnt = 0;
+        servo_cnt1++;  
+        switch(servo_cnt1){
+            case 1: servo_sen_M = 1; break;
+            case 2: servo_sen_M = 0; break;
+        }  
+    }    
+    if(mode1 == 0){
+        servo_cnt = 0;
+        servo_cnt1 = 0;
+    }
+    if(gun_mode == 0){  
+        servo_cnt3 = 0;
+        servo_cnt4++;  
+        switch(servo_cnt4){
+            case 1: servo_gripper_M = 1; break;
+            case 3: servo_gripper_M = 0; break;
+        }  
+    }
+    if(gun_mode == 1){
+        servo_cnt4 = 0;
+        servo_cnt3++;  
+        switch(servo_cnt3){
+            case 1: servo_gripper_M = 1; break;
+            case 2: servo_gripper_M = 0; break;
+        }  
+    }   
+      
+}
 void motor(){
-    //∏ÿ√„
-    if(mode == 0){
+    //Î©àÏ∂§
+    if(mode == 0 && gun_mode > 1){
         PORTC.2 = 0; PORTC.3 = 0; PORTC.4 = 0; PORTC.5 = 0;
     }        
-    //¿¸¡¯
-    if(mode == 1 && mode1 == 0){
+    //Ï†ÑÏßÑ
+    if(mode == 1 && mode1 == 0 && gun_mode > 1){
         PORTC.2 = 1; PORTC.3 = 0; PORTC.4 = 1; PORTC.5 = 0;    
     }     
-    //»ƒ¡¯        
-    if(mode == 2 && mode1 == 0){
+    //ÌõÑÏßÑ        
+    if(mode == 2 && mode1 == 0 > 0 && gun_mode > 1){
         PORTC.2 = 0; PORTC.3 = 1; PORTC.4 = 0; PORTC.5 = 1;
     }     
-    //¡¬»∏¿¸, øÏ»∏¿¸_∏ÿ√„
-    if(mode1 == 0){
+    //Ï¢åÌöåÏ†Ñ, Ïö∞ÌöåÏ†Ñ_Î©àÏ∂§
+    if(mode1 == 0 && gun_mode > 1){
         PORTB.5 = 0; PORTB.6 = 0;
     }  
-    //¡¬»∏¿¸   
-    if(mode1 == 1){
+    //Ï¢åÌöåÏ†Ñ   
+    if(mode1 == 1 && gun_mode > 1){
         PORTB.5 = 0; PORTB.6 = 1;
     }         
-    //øÏ»∏¿¸
-    if(mode1 == 2){
+    //Ïö∞ÌöåÏ†Ñ
+    if(mode1 == 2 && gun_mode > 1){
         PORTB.5 = 1; PORTB.6 = 0;
     }  
-    /*****PWM¿ª_¿ß«ÿ_∏∏µÁ_∞Õ*****/
+    
     mo_cnt++; 
+    
     if(mo_cnt >= 100){
         mo_cnt = 0;
-    }                             
-    ///////////////////////////
-    //¿¸¡¯_¡¬»∏¿¸
-    if(mode == 1 && mode1 == 1){ 
+    }             
+    //Ï†ÑÏßÑ_Ï¢åÌöåÏ†Ñ
+    if(mode == 1 && mode1 == 1 && gun_mode > 1){ 
         PORTC.4 = 1; PORTC.5 = 0;
-        //_¿ŒªÁ¿ÃµÂ_πŸƒ˚¥¬_¥¿∏Æ∞‘_<øﬁ¬ πŸƒ˚_¥¿∏Æ∞‘>
-        //PWM_πÊΩƒ
         if(mo_cnt >= 40){
             PORTC.2 = 1; PORTC.3 = 0;
         }                            
@@ -80,11 +174,9 @@ void motor(){
             PORTC.2 = 0; PORTC.3 = 0;
         }             
     }
-    //¿¸¡¯_øÏ»∏¿¸
-    if(mode == 1 && mode1 == 2){  
+    //Ï†ÑÏßÑ_Ïö∞ÌöåÏ†Ñ
+    if(mode == 1 && mode1 == 2 && gun_mode > 1){  
         PORTC.2 = 1; PORTC.3 = 0;
-        //_¿ŒªÁ¿ÃµÂ_πŸƒ˚¥¬_¥¿∏Æ∞‘_<ø¿∏•¬ πŸƒ˚_¥¿∏Æ∞‘>
-        //PWM_πÊΩƒ
         if(mo_cnt >= 40){
             PORTC.4 = 1; PORTC.5 = 0;
         }                            
@@ -93,8 +185,8 @@ void motor(){
         }             
     }      
     
-    //»ƒ¡¯_¡¬»∏¿¸
-    if(mode == 2 && mode1 == 1){
+    //ÌõÑÏßÑ_Ï¢åÌöåÏ†Ñ
+    if(mode == 2 && mode1 == 1 && gun_mode > 1){
         PORTC.4 = 0; PORTC.5 = 1; 
         if(mo_cnt >= 40){
             PORTC.2 = 0; PORTC.3 = 1;
@@ -104,8 +196,8 @@ void motor(){
         }             
     } 
     
-    //»ƒ¡¯_øÏ»∏¿¸
-    if(mode == 2 && mode1 == 2){
+    //ÌõÑÏßÑ_Ïö∞ÌöåÏ†Ñ
+    if(mode == 2 && mode1 == 2 && gun_mode > 1){
         PORTC.2 = 0; PORTC.3 = 1;  
         if(mo_cnt >= 40){
             PORTC.4 = 0; PORTC.5 = 1;
@@ -114,33 +206,31 @@ void motor(){
             PORTC.4 = 0; PORTC.5 = 0;
         }             
     }     
-}           
-/*****µÂ∑–_ƒ´∏ﬁ∂Û******/
-/*******_Ω∫≈‹∏≈Õ_ªÁøÎ******/
+}
 void step(){
     if(stepmode == 0){
         PORTB.0 = PORTB.1 = PORTB.2 = PORTB.3 = 0; tick = 0;
     }
-    if(stepmode == 1){  //µÂ∑–ƒ´∏ﬁ∂Û_¡¬»∏¿¸
+    if(stepmode == 1){  //ÎìúÎ°†Ïπ¥Î©îÎùº_Ï¢åÌöåÏ†Ñ
         tick++;
         switch(tick){
-            case 5: PORTB.0 = 0; PORTB.1 = 0; PORTB.2 = 0; PORTB.3 = 1; break;
-            case 10: PORTB.0 = 0; PORTB.1 = 0; PORTB.2 = 1; PORTB.3 = 0; break;
-            case 15: PORTB.0 = 0; PORTB.1 = 1; PORTB.2 = 0; PORTB.3 = 0; break;
-            case 20: PORTB.0 = 1; PORTB.1 = 0; PORTB.2 = 0; PORTB.3 = 0; tick = 0; break;
+            case 5: PORTB.0 = 1; PORTB.1 = 1; PORTB.2 = 1; PORTB.3 = 0; break;
+            case 10: PORTB.0 = 1; PORTB.1 = 1; PORTB.2 = 0; PORTB.3 = 1; break;
+            case 15: PORTB.0 = 1; PORTB.1 = 0; PORTB.2 = 1; PORTB.3 = 1; break;
+            case 20: PORTB.0 = 0; PORTB.1 = 1; PORTB.2 = 1; PORTB.3 = 1; tick = 0; break;
         }      
     }     
-    if(stepmode == 2){  //µÂ∑–ƒ´∏ﬁ∂Û_øÏ»∏¿¸
+    if(stepmode == 2){  //ÎìúÎ°†Ïπ¥Î©îÎùº_Ïö∞ÌöåÏ†Ñ
         tick++;
         switch(tick){
-            case 5: PORTB.0 = 1; PORTB.1 = 0; PORTB.2 = 0; PORTB.3 = 0; break;
-            case 10: PORTB.0 = 0; PORTB.1 = 1; PORTB.2 = 0; PORTB.3 = 0; break;
-            case 15: PORTB.0 = 0; PORTB.1 = 0; PORTB.2 = 1; PORTB.3 = 0; break;
-            case 20: PORTB.0 = 0; PORTB.1 = 0; PORTB.2 = 0; PORTB.3 = 1; tick = 0; break;       
+            case 5: PORTB.0 = 0; PORTB.1 = 1; PORTB.2 = 1; PORTB.3 = 1; break;
+            case 10: PORTB.0 = 1; PORTB.1 = 0; PORTB.2 = 1; PORTB.3 = 1; break;
+            case 15: PORTB.0 = 1; PORTB.1 = 1; PORTB.2 = 0; PORTB.3 = 1; break;
+            case 20: PORTB.0 = 1; PORTB.1 = 1; PORTB.2 = 1; PORTB.3 = 0; tick = 0; break;       
         }      
     }
 }
-/*****√—±‚_µø¿€_*****/
+/*****Ï¥ùÍ∏∞_ÎèôÏûë_*****/
 void gun(){
     if(gun_mode == 0){
         headlight = 0;
@@ -148,18 +238,18 @@ void gun(){
     if(gun_mode == 1){
         headlight = 1;
     }              
-    /*****¥‹πﬂ_*****/
+    /*****Îã®Î∞ú_*****/
     if(gun_mode == 3){     
         if(gun_mode1 == 1){  
             fire_cnt++;
             if(fire_cnt <= 115){
                 fire = 1;           
             }     
-            //ªÁ∞›¡ﬂ¡ˆ
+            //ÏÇ¨Í≤©Ï§ëÏßÄ
             if(fire_cnt > 115){gun_mode1 = 0; fire_cnt = 0; fire = 0;}  
         }
     }          
-    /*****¡°ªÁ_*****/
+    /*****Ï†êÏÇ¨_*****/
     if(gun_mode == 4){                         
         if(gun_mode1 == 1){
             fire_cnt++;      
@@ -169,7 +259,7 @@ void gun(){
             if(fire_cnt >= 330){gun_mode1 = 0; fire_cnt = 0; fire = 0;}
         }
     }                       
-    /*****ø¨ªÁ_*****/
+    /*****Ïó∞ÏÇ¨_*****/
     if(gun_mode == 5){
         if(gun_mode1 == 1){
             fire = 1;         
@@ -180,6 +270,7 @@ void gun(){
     } 
 }
 void sig_mode(){
+       
     if(number < 4){   
         mode1_cnt = 0;
         mode2_cnt = 0;
@@ -191,9 +282,27 @@ void sig_mode(){
         mode8_cnt = 0;
         mode9_cnt = 0;
         mode10_cnt = 0;
+        mode11_cnt = 0; 
+    }  
+    if(number < 4 && number >= 1){            
+        mode1_cnt = 0;
+        mode2_cnt = 0;
+        mode3_cnt = 0;
+        mode4_cnt = 0; 
+        mode5_cnt = 0;
+        mode6_cnt = 0;   
+        mode7_cnt = 0;
+        mode8_cnt = 0;
+        mode9_cnt = 0;
+        mode10_cnt = 0;
         mode11_cnt = 0;
+        mode0_cnt++;  
+        if(mode0_cnt >= 50){
+            mode0_cnt = 0;
+            number = 0;
+        }
     }
-    /********¿¸¡¯**********/
+    /********Ï†ÑÏßÑ**********/
     if(number >= 4 && number < 10){  
         mode2_cnt = 0;
         mode3_cnt = 0;
@@ -212,25 +321,25 @@ void sig_mode(){
         mode = 1;   
         mode1_cnt = 0;     
     } 
-    //¿¸¡¯_∞Ëº”µø¿€
+    //Ï†ÑÏßÑ_Í≥ÑÏÜçÎèôÏûë
     if(mode1_cnt >= 50 && number >= 4 && number < 10 && mode == 1){
         number = 0;
         mode = 1;   
         mode1_cnt = 0;     
     }
-    //»ƒ¡¯_∞Ëº”µø¿€
+    //ÌõÑÏßÑ_Í≥ÑÏÜçÎèôÏûë
     if(mode2_cnt >= 50 && number >= 10 && number < 20 && mode == 2){
         number = 0;
         mode = 2;   
         mode2_cnt = 0;     
     }
-    /***********»ƒ¡¯_∏ÿ√„********/
+    /***********ÌõÑÏßÑ_Î©àÏ∂§********/
     if(mode1_cnt >= 50 && number >= 4 && number < 10 && mode == 2){
         number = 0;
         mode = 0;   
         mode1_cnt = 0;     
     }
-    /********»ƒ¡¯**********/
+    /********ÌõÑÏßÑ**********/
     if(number >= 10 && number < 20){
         mode1_cnt = 0;
         mode3_cnt = 0;
@@ -249,7 +358,7 @@ void sig_mode(){
         mode = 2;     
         mode2_cnt = 0;
     }
-    /*****¿¸¡¯_∏ÿ√„_*****/
+    /*****Ï†ÑÏßÑ_Î©àÏ∂§_*****/
     if(mode2_cnt >= 50 && number >= 10 && number < 20 && mode == 1){
         number = 0;
         mode = 0;      
@@ -258,7 +367,7 @@ void sig_mode(){
     
     
 //////////////////////////////////    
-    /********¡¬»∏¿¸**********/
+    /********Ï¢åÌöåÏ†Ñ**********/
     if(number >= 20 && number < 30){
         mode1_cnt = 0;
         mode2_cnt = 0;
@@ -277,25 +386,25 @@ void sig_mode(){
         mode1 = 1;     
         mode3_cnt = 0;
     }     
-    //¡¬»∏¿¸_∞Ëº”µø¿€
+    //Ï¢åÌöåÏ†Ñ_Í≥ÑÏÜçÎèôÏûë
     if(mode3_cnt >= 80 && number >= 20 && number < 30 && mode1 == 1){
         number = 0;
         mode1 = 1;   
         mode3_cnt = 0;     
     } 
-    //øÏ»∏¿¸_∞Ëº”µø¿€
+    //Ïö∞ÌöåÏ†Ñ_Í≥ÑÏÜçÎèôÏûë
     if(mode4_cnt >= 80 && number >= 30 && number < 40 && mode1 == 2){
         number = 0;
         mode1 = 2;   
         mode4_cnt = 0;     
     }
-    /***øÏ»∏¿¸_¬˜¥‹_***/
+    /***Ïö∞ÌöåÏ†Ñ_Ï∞®Îã®_***/
     if(mode3_cnt >= 80 && number >= 20 && number < 30 && mode1 == 2){
         number = 0;
         mode1 = 0;     
         mode3_cnt = 0;
     }
-    /********øÏ»∏¿¸**********/
+    /********Ïö∞ÌöåÏ†Ñ**********/
     if(number >= 30 && number < 40){  
         mode1_cnt = 0;
         mode2_cnt = 0;
@@ -314,13 +423,13 @@ void sig_mode(){
         mode1 = 2;     
         mode4_cnt = 0;
     }   
-    /***¡¬»∏¿¸_¬˜¥‹_***/
+    /***Ï¢åÌöåÏ†Ñ_Ï∞®Îã®_***/
     if(mode4_cnt >= 80 && number >= 30 && number < 40 && mode1 == 1){
         number = 0;
         mode1 = 0;     
         mode4_cnt = 0;
     }   
-    /***πﬂªÁ***/
+    /***Î∞úÏÇ¨***/
     if(number >= 40 && number < 50){  
         mode1_cnt = 0;
         mode2_cnt = 0;
@@ -334,44 +443,44 @@ void sig_mode(){
         mode11_cnt = 0;
         mode5_cnt++;
     }
-    //¿¸¡∂µÓ_on      
+    //Ï†ÑÏ°∞Îì±_on      
     if(mode5_cnt >= 80 && number >= 40 && number < 50 && gun_mode == 0){
         number = 0;
         gun_mode = 1;     
         mode5_cnt = 0;
     }          
-    //¿¸¡∂µÓ_off
+    //Ï†ÑÏ°∞Îì±_off
     if(mode5_cnt >= 80 && number >= 40 && number < 50 && gun_mode == 1){
         number = 0;
         gun_mode = 0;     
         mode5_cnt = 0;
     }   
-    //¥‹πﬂ
+    //Îã®Î∞ú
     if(mode5_cnt >= 80 && number >= 40 && number < 50 && gun_mode == 3){
         number = 0;
         gun_mode1 = 1;    
         mode5_cnt = 0;
     }
-    //¡°ªÁ
+    //Ï†êÏÇ¨
     if(mode5_cnt >= 80 && number >= 40 && number < 50 && gun_mode == 4){
         number = 0;
         gun_mode1 = 1;    
         mode5_cnt = 0;
     }
-    //ø¨ªÁ
+    //Ïó∞ÏÇ¨
     if(mode5_cnt >= 80 && number >= 40 && number < 50 && gun_mode == 5 && gun_mode1 == 0){
         number = 0;
         gun_mode1 = 1;    
         mode5_cnt = 0;
     }
-    //ø¨ªÁ¬˜¥‹
+    //Ïó∞ÏÇ¨Ï∞®Îã®
     if(mode5_cnt >= 80 && number >= 40 && number < 50 && gun_mode == 5 && gun_mode1 == 1){
         number = 0;
         gun_mode1 = 0;    
         mode5_cnt = 0;
     }   
     
-    //µÂ∑–_ƒ´∏ﬁ∂Û_¡¬»∏¿¸
+    //ÎìúÎ°†_Ïπ¥Î©îÎùº_Ï¢åÌöåÏ†Ñ
     if(number >= 50 && number < 60){  
         mode1_cnt = 0;
         mode2_cnt = 0;
@@ -390,25 +499,25 @@ void sig_mode(){
         stepmode = 1;    
         mode6_cnt = 0;
     }  
-    //µÂ∑–_ƒ´∏ﬁ∂Û_¡¬»∏¿¸_∞Ëº” 
+    //ÎìúÎ°†_Ïπ¥Î©îÎùº_Ï¢åÌöåÏ†Ñ_Í≥ÑÏÜç 
     if(mode6_cnt >= 80 && number >= 50 && number < 60 && stepmode == 1){
         number = 0;
         stepmode = 1;    
         mode6_cnt = 0;
     } 
-    //µÂ∑–_ƒ´∏ﬁ∂Û_øÏ»∏¿¸_∞Ëº” 
+    //ÎìúÎ°†_Ïπ¥Î©îÎùº_Ïö∞ÌöåÏ†Ñ_Í≥ÑÏÜç 
     if(mode7_cnt >= 80 && number >= 60 && number < 70 && stepmode == 2){
         number = 0;
         stepmode = 2;    
         mode7_cnt = 0;
     }              
-    //µÂ∑–_ƒ´∏ﬁ∂Û_øÏ»∏¿¸_¬˜¥‹ 
+    //ÎìúÎ°†_Ïπ¥Î©îÎùº_Ïö∞ÌöåÏ†Ñ_Ï∞®Îã® 
     if(mode6_cnt >= 80 && number >= 50 && number < 60 && stepmode == 2){
         number = 0;
         stepmode = 0;    
         mode6_cnt = 0;
     } 
-    //µÂ∑–_ƒ´∏ﬁ∂Û_øÏ»∏¿¸
+    //ÎìúÎ°†_Ïπ¥Î©îÎùº_Ïö∞ÌöåÏ†Ñ
     if(number >= 60 && number < 70){  
         mode1_cnt = 0;
         mode2_cnt = 0;
@@ -427,13 +536,13 @@ void sig_mode(){
         stepmode = 2;    
         mode7_cnt = 0;
     }      
-    //µÂ∑–_ƒ´∏ﬁ∂Û_¡¬»∏¿¸_¬˜¥‹
+    //ÎìúÎ°†_Ïπ¥Î©îÎùº_Ï¢åÌöåÏ†Ñ_Ï∞®Îã®
     if(mode7_cnt >= 80 && number >= 60 && number < 70 && stepmode == 1){
         number = 0;
         stepmode = 0;    
         mode7_cnt = 0;
     }    
-    /****æ»¿¸º≥¡§****/  
+    /****ÏïàÏ†ÑÏÑ§Ï†ï****/  
     if(number >= 70 && number < 80){  
         mode1_cnt = 0;
         mode2_cnt = 0;
@@ -454,7 +563,7 @@ void sig_mode(){
         gun_mode = 0;
         mode8_cnt = 0;
     }   
-    /****¥‹πﬂº≥¡§****/
+    /****Îã®Î∞úÏÑ§Ï†ï****/
     if(number >= 80 && number < 90){  
         mode1_cnt = 0;
         mode2_cnt = 0;
@@ -475,7 +584,7 @@ void sig_mode(){
         gun_mode = 3;
         mode9_cnt = 0;
     } 
-    /****¡°ªÁº≥¡§****/
+    /****Ï†êÏÇ¨ÏÑ§Ï†ï****/
     if(number >= 90 && number < 100){  
         mode1_cnt = 0;
         mode2_cnt = 0;
@@ -495,7 +604,7 @@ void sig_mode(){
         gun_mode = 4;
         mode10_cnt = 0;
     }
-    /****ø¨ªÁº≥¡§****/
+    /****Ïó∞ÏÇ¨ÏÑ§Ï†ï****/
     if(number >= 100){  
         mode1_cnt = 0;
         mode2_cnt = 0;
@@ -514,49 +623,5 @@ void sig_mode(){
         number = 0;
         gun_mode = 5;
         mode11_cnt = 0;
-    }
-}
-
-interrupt [TIM2_OVF] void timer2_ovf_isr(void){
-    TCNT2=0x06;  
-    step(); 
-    fnd();
-    motor();    
-    gun();
-    sig_mode();
-
-    /*****Ω≈»£∞°_æ¯¿ª∂ß¥¬_1¿Ã_µÈæÓø»_*****/       
-    if(signal == 1){
-        sig_flag1 = 0;
-    }        
-}
-/******_¿⁄¿≤¡÷«‡∏µÂ_√ ¿Ω∆ƒºæº≠_¡ÿ∫Ò¡ﬂ*******/
-/*
-unsigned int read_adc(unsigned char adc_input){
-ADMUX=adc_input | ADC_VREF_TYPE;
-delay_us(10);
-ADCSRA|=(1<<ADSC);
-while ((ADCSRA & (1<<ADIF))==0);
-ADCSRA|=(1<<ADIF);
-return ADCW;
-}     */
-void main(void){
-DDRA = 0xfe; DDRB = 0xff; DDRC = 0xff; DDRD = 0xff;
-/******_¿⁄¿≤¡÷«‡∏µÂ_√ ¿Ω∆ƒºæº≠_¡ÿ∫Ò¡ﬂ*******/
-/*ADMUX=0;*/
-ASSR=0<<AS2;
-TCCR2=(0<<PWM2) | (0<<COM21) | (0<<COM20) | (0<<CTC2) | (0<<CS22) | (1<<CS21) | (1<<CS20);
-TCNT2=0x06;
-OCR2=0x00;
-TIMSK=0x41;
-#asm("sei")
-
-while (1){ 
-        //«œ∞≠∆ﬁΩ∫¿œ∂ß µø¿€
-        if(signal == 0 && sig_flag1 == 0){
-            sig_flag1 = 1;
-            number++;
-        } 
-        
     }
 }
