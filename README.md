@@ -308,15 +308,6 @@ interrupt [TIM2_OVF] void timer2_ovf_isr(void){
 ✔ FND 신호 디버깅 성공
 
 ---
-
-# 🚀 향후 개선 방향
-
-- Bluetooth / WiFi 기반 장거리 제어
-- 실제 FPV 카메라 영상 송출
-- Raspberry Pi 연동 영상처리
-- AI 객체 추적 자동사격
-- 스마트폰 앱 원격제어
-
 ---
 
 # 👨‍💻 Developer
